@@ -675,7 +675,7 @@ int main(int argc, char **argv)
 	if (rc != openni::STATUS_OK)
 	{
 		printf("openDevice failed:\n%s\n", openni::OpenNI::getExtendedError());
-		closeSample(ERR_DEVICE);
+		//closeSample(ERR_DEVICE);
 	}
 
 // 	audioInit();

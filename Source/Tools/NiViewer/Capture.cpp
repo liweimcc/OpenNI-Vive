@@ -22,9 +22,12 @@
 // Includes
 // --------------------------------
 #include <XnOS.h>
+#include <fstream>
 #include "Capture.h"
 #include "Device.h"
 #include "Draw.h"
+
+#include "ViveTracker.h"
 
 #if (XN_PLATFORM == XN_PLATFORM_WIN32)
 #include <Commdlg.h>
@@ -88,15 +91,22 @@ typedef struct CapturingData
 // --------------------------------
 CapturingData g_Capture;
 
+ViveTracker g_tracker;
+
 DeviceParameter g_DepthCapturing;
 DeviceParameter g_ColorCapturing;
 DeviceParameter g_IRCapturing;
+
+std::ofstream g_poseLogFile;
 
 // --------------------------------
 // Code
 // --------------------------------
 void captureInit()
 {
+	// init tracker first
+	g_tracker.InitOpenVR();
+
 	// Depth Formats
 	int nIndex = 0;
 
@@ -221,6 +231,8 @@ void captureStart(int nDelay)
 		return;
 	}
 
+	g_poseLogFile.open("PoseLog.txt", std::ofstream::out);
+
 	XnUInt64 nNow;
 	xnOSGetTimeStamp(&nNow);
 	nNow /= 1000;
@@ -242,6 +254,9 @@ void captureStop(int)
         g_Capture.recorder.destroy();
 		g_Capture.State = NOT_CAPTURING;
     }
+
+	if (g_poseLogFile.is_open())
+		g_poseLogFile.close();
 }
 
 #define START_CAPTURE_CHECK_RC(rc, what)												\
@@ -257,6 +272,35 @@ void captureRun()
 {
 	XnStatus nRetVal = XN_STATUS_OK;
 
+	if (g_Capture.State == CAPTURING)
+	{
+		static int lastIdx = g_Capture.streams[CAPTURE_DEPTH_STREAM].startFrame;
+		int idx = g_Capture.streams[CAPTURE_DEPTH_STREAM].getFrameFunc().getFrameIndex();
+		
+		if ( lastIdx != idx)
+		{
+			lastIdx = idx;
+			vr::TrackedDevicePose_t pose;
+			g_tracker.getPose(pose);
+
+			// Get Hololen pose and write into log file
+			if (g_poseLogFile.is_open())
+			{
+				g_poseLogFile << idx << "\n";
+
+				for (int i = 0; i < 3; i++)
+				{
+					for (int j = 0; j < 4; j++)
+					{
+						g_poseLogFile << pose.mDeviceToAbsoluteTracking.m[i][j] << " ";
+					}
+					g_poseLogFile << "\n";
+				}
+				g_poseLogFile << "\n";
+			}
+		}
+	}
+	
 	if (g_Capture.State != SHOULD_CAPTURE)
 	{
 		return;
