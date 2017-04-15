@@ -23,6 +23,7 @@
 // --------------------------------
 #include <XnOS.h>
 #include <fstream>
+#include <sstream>
 #include "Capture.h"
 #include "Device.h"
 #include "Draw.h"
@@ -98,6 +99,7 @@ DeviceParameter g_ColorCapturing;
 DeviceParameter g_IRCapturing;
 
 std::ofstream g_poseLogFile;
+std::stringstream g_poseLogString;
 
 // --------------------------------
 // Code
@@ -231,7 +233,7 @@ void captureStart(int nDelay)
 		return;
 	}
 
-	g_poseLogFile.open("PoseLog.txt", std::ofstream::out);
+	g_poseLogString.clear();
 
 	XnUInt64 nNow;
 	xnOSGetTimeStamp(&nNow);
@@ -249,14 +251,19 @@ void captureRestart(int)
 
 void captureStop(int)
 {
+	g_poseLogFile.open("PoseLog.txt", std::ofstream::out);
+
+	if (g_poseLogFile.is_open())
+	{
+		g_poseLogFile.write(g_poseLogString.str().data(), g_poseLogString.str().length());
+		g_poseLogFile.close();
+	}
+
     if (g_Capture.recorder.isValid())
     {
         g_Capture.recorder.destroy();
 		g_Capture.State = NOT_CAPTURING;
     }
-
-	if (g_poseLogFile.is_open())
-		g_poseLogFile.close();
 }
 
 #define START_CAPTURE_CHECK_RC(rc, what)												\
@@ -276,31 +283,29 @@ void captureRun()
 	{
 		static int lastIdx = g_Capture.streams[CAPTURE_DEPTH_STREAM].startFrame;
 		int idx = g_Capture.streams[CAPTURE_DEPTH_STREAM].getFrameFunc().getFrameIndex();
-		
-		if ( lastIdx != idx)
+		uint64_t timestamp = g_Capture.streams[CAPTURE_DEPTH_STREAM].getFrameFunc().getTimestamp();
+
+		if (lastIdx != idx)
 		{
 			lastIdx = idx;
 			vr::TrackedDevicePose_t pose;
 			g_tracker.getPose(pose);
 
 			// Get Hololen pose and write into log file
-			if (g_poseLogFile.is_open())
-			{
-				g_poseLogFile << idx << "\n";
+			g_poseLogString << timestamp << " " << idx << "\n";
 
-				for (int i = 0; i < 3; i++)
+			for (int i = 0; i < 3; i++)
+			{
+				for (int j = 0; j < 4; j++)
 				{
-					for (int j = 0; j < 4; j++)
-					{
-						g_poseLogFile << pose.mDeviceToAbsoluteTracking.m[i][j] << " ";
-					}
-					g_poseLogFile << "\n";
+					g_poseLogString << pose.mDeviceToAbsoluteTracking.m[i][j] << " ";
 				}
-				g_poseLogFile << "\n";
+				g_poseLogString << "\n";
 			}
+			g_poseLogString << "\n";
 		}
 	}
-	
+
 	if (g_Capture.State != SHOULD_CAPTURE)
 	{
 		return;
