@@ -587,7 +587,7 @@ int main(int argc, char **argv)
 	DeviceConfig config;
 	config.openDepth = SENSOR_TRY;
 	config.openColor = SENSOR_TRY;
-	config.openIR = SENSOR_TRY;
+	config.openIR = SENSOR_OFF;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -678,6 +678,11 @@ int main(int argc, char **argv)
 		//closeSample(ERR_DEVICE);
 	}
 
+	{
+		setDepthVideoMode(4);
+		setColorVideoMode(6);
+	}
+
 // 	audioInit();
  	captureInit();
 
@@ -705,7 +710,7 @@ int main(int argc, char **argv)
 	createMenu();
 
 	atexit(onExit);
-	
+
 	// Per frame code is in drawFrame()
 	glutMainLoop();
 

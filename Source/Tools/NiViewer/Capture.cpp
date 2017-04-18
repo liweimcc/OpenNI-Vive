@@ -183,7 +183,7 @@ bool isCapturing()
 
 void captureBrowse(int)
 {
-#if (ONI_PLATFORM == ONI_PLATFORM_WIN32)
+#if (0) && (ONI_PLATFORM == ONI_PLATFORM_WIN32)
     OPENFILENAME ofn  = { 0 };
     ofn.lStructSize   = sizeof(ofn);
     ofn.lpstrFilter   = TEXT("Oni Files (*.oni)\0*.oni\0");
