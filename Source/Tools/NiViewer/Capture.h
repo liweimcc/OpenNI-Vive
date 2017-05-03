@@ -52,6 +52,7 @@ const char* captureGetIRFormatName();
 
 void captureRun();
 void captureSingleFrame(int);
+inline const char* captureTrackerPose();
 
 void getCaptureMessage(char* pMessage);
 

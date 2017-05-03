@@ -82,8 +82,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)Bin\$(Platform)-$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin\Intermediate\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>$(OPENVR_DIR)\headers;$(IncludePath)</IncludePath>
-    <LibraryPath>$(OPENVR_DIR)\lib\win64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(OPENVR_DIR)\headers;$(OPENCV_DIR)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(OPENVR_DIR)\lib\win64;$(OPENCV_DIR)\x64\vc14\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -174,7 +174,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Comdlg32.lib;OpenNI2.lib;XnLib.lib;glut64.lib;openvr_api.lib</AdditionalDependencies>
+      <AdditionalDependencies>Comdlg32.lib;OpenNI2.lib;XnLib.lib;glut64.lib;openvr_api.lib;opencv_world310.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);..\..\..\ThirdParty\GL</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>

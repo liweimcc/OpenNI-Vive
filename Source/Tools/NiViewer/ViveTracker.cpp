@@ -66,9 +66,14 @@ bool ViveTracker::InitOpenVR()
 
 bool ViveTracker::getPose(vr::TrackedDevicePose_t &pose)
 {
-	m_pVRSystem->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, m_poseBuf, vr::k_unMaxTrackedDeviceCount);
+	if (m_pVRSystem != NULL)
+	{
+		m_pVRSystem->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, m_poseBuf, vr::k_unMaxTrackedDeviceCount);
 
-	pose = m_poseBuf[m_trackerIdx];
+		pose = m_poseBuf[m_trackerIdx];
 
+		return true;
+	}
+	
 	return false;
 }

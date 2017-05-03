@@ -29,6 +29,7 @@
 #include "Draw.h"
 
 #include "ViveTracker.h"
+#include "opencv2/opencv.hpp"
 
 #if (XN_PLATFORM == XN_PLATFORM_WIN32)
 #include <Commdlg.h>
@@ -279,69 +280,56 @@ void captureRun()
 {
 	XnStatus nRetVal = XN_STATUS_OK;
 
-	if (g_Capture.State == CAPTURING)
+	if (g_Capture.State == SHOULD_CAPTURE)
 	{
-		static int lastIdx = g_Capture.streams[CAPTURE_DEPTH_STREAM].startFrame;
+		XnUInt64 nNow;
+		xnOSGetTimeStamp(&nNow);
+		nNow /= 1000;
+
+		// check if time has arrived
+		if ((XnInt64)nNow >= g_Capture.nStartOn)
+		{
+			// check if we need to discard first frame
+			if (g_Capture.bSkipFirstFrame)
+			{
+				g_Capture.bSkipFirstFrame = false;
+			}
+			else
+			{
+				// start recording
+				for (int i = 0; i < CAPTURE_STREAM_COUNT; ++i)
+				{
+					g_Capture.streams[i].bRecording = false;
+
+					if (g_Capture.streams[i].isStreamOn() && g_Capture.streams[i].captureType != STREAM_DONT_CAPTURE)
+					{
+						nRetVal = g_Capture.recorder.attach(g_Capture.streams[i].getStream(), g_Capture.streams[i].captureType == STREAM_CAPTURE_LOSSY);
+						START_CAPTURE_CHECK_RC(nRetVal, "add stream");
+						g_Capture.streams[i].bRecording = TRUE;
+						g_Capture.streams[i].startFrame = g_Capture.streams[i].getFrameFunc().getFrameIndex();
+					}
+				}
+
+				nRetVal = g_Capture.recorder.start();
+				START_CAPTURE_CHECK_RC(nRetVal, "start recording");
+				g_Capture.State = CAPTURING;
+			}
+		}
+	}
+	else if (g_Capture.State == CAPTURING)
+	{
+		int startIdx = g_Capture.streams[CAPTURE_DEPTH_STREAM].startFrame;
 		int idx = g_Capture.streams[CAPTURE_DEPTH_STREAM].getFrameFunc().getFrameIndex();
 		uint64_t timestamp = g_Capture.streams[CAPTURE_DEPTH_STREAM].getFrameFunc().getTimestamp();
+		static int lastIdx = idx;
 
 		if (lastIdx != idx)
 		{
 			lastIdx = idx;
-			vr::TrackedDevicePose_t pose;
-			g_tracker.getPose(pose);
 
 			// Get Hololen pose and write into log file
-			g_poseLogString << timestamp << " " << idx << "\n";
-
-			for (int i = 0; i < 3; i++)
-			{
-				for (int j = 0; j < 4; j++)
-				{
-					g_poseLogString << pose.mDeviceToAbsoluteTracking.m[i][j] << " ";
-				}
-				g_poseLogString << "\n";
-			}
-			g_poseLogString << "\n";
-		}
-	}
-
-	if (g_Capture.State != SHOULD_CAPTURE)
-	{
-		return;
-	}
-
-	XnUInt64 nNow;
-	xnOSGetTimeStamp(&nNow);
-	nNow /= 1000;
-
-	// check if time has arrived
-	if ((XnInt64)nNow >= g_Capture.nStartOn)
-	{
-		// check if we need to discard first frame
-		if (g_Capture.bSkipFirstFrame)
-		{
-			g_Capture.bSkipFirstFrame = false;
-		}
-		else
-		{
-			// start recording
-			for (int i = 0; i < CAPTURE_STREAM_COUNT; ++i)
-			{
-				g_Capture.streams[i].bRecording = false;
-
-				if (g_Capture.streams[i].isStreamOn() && g_Capture.streams[i].captureType != STREAM_DONT_CAPTURE)
-				{
-					nRetVal = g_Capture.recorder.attach(g_Capture.streams[i].getStream(), g_Capture.streams[i].captureType == STREAM_CAPTURE_LOSSY);
-					START_CAPTURE_CHECK_RC(nRetVal, "add stream");
-					g_Capture.streams[i].bRecording = TRUE;
-					g_Capture.streams[i].startFrame = g_Capture.streams[i].getFrameFunc().getFrameIndex();
-				}
-			}
-
-			nRetVal = g_Capture.recorder.start();
-			START_CAPTURE_CHECK_RC(nRetVal, "start recording");
-			g_Capture.State = CAPTURING;
+			g_poseLogString << timestamp << " " << idx - startIdx << "\n";
+			g_poseLogString << captureTrackerPose();
 		}
 	}
 }
@@ -392,17 +380,17 @@ void getCaptureMessage(char* pMessage)
 
 void getColorFileName(int num, char* csName)
 {
-	sprintf(csName, "%s/Color_%d.raw", CAPTURED_FRAMES_DIR_NAME, num);
+	sprintf(csName, "%s/Color_%d.png", CAPTURED_FRAMES_DIR_NAME, num);
 }
 
 void getDepthFileName(int num, char* csName)
 {
-	sprintf(csName, "%s/Depth_%d.raw", CAPTURED_FRAMES_DIR_NAME, num);
+	sprintf(csName, "%s/Depth_%d.png", CAPTURED_FRAMES_DIR_NAME, num);
 }
 
 void getIRFileName(int num, char* csName)
 {
-	sprintf(csName, "%s/IR_%d.raw", CAPTURED_FRAMES_DIR_NAME, num);
+	sprintf(csName, "%s/IR_%d.png", CAPTURED_FRAMES_DIR_NAME, num);
 }
 
 int findUniqueFileName()
@@ -452,9 +440,11 @@ int findUniqueFileName()
 	return num;
 }
 
+int g_captureSingleFrameNum;
 void captureSingleFrame(int)
 {
 	int num = findUniqueFileName();
+	g_captureSingleFrameNum = num;
 
 	XnChar csColorFileName[XN_FILE_MAX_PATH];
 	XnChar csDepthFileName[XN_FILE_MAX_PATH];
@@ -466,19 +456,30 @@ void captureSingleFrame(int)
 	openni::VideoFrameRef& colorFrame = getColorFrame();
 	if (colorFrame.isValid())
 	{
-		xnOSSaveFile(csColorFileName, colorFrame.getData(), colorFrame.getDataSize());
+		//xnOSSaveFile(csColorFileName, colorFrame.getData(), colorFrame.getDataSize());
+
+		cv::Mat colorData(colorFrame.getHeight(), colorFrame.getWidth(), CV_8UC3, (void*)colorFrame.getData());
+		cv::imwrite(csColorFileName, colorData);
 	}
 
 	openni::VideoFrameRef& depthFrame = getDepthFrame();
 	if (depthFrame.isValid())
 	{
-		xnOSSaveFile(csDepthFileName, depthFrame.getData(), depthFrame.getDataSize());
+		//xnOSSaveFile(csDepthFileName, depthFrame.getData(), depthFrame.getDataSize());
+
+		cv::Mat depthData(depthFrame.getHeight(), depthFrame.getWidth(), CV_16UC1, (void*)depthFrame.getData());
+		cv::imwrite(csDepthFileName, depthData);
 	}
 
 	openni::VideoFrameRef& irFrame = getIRFrame();
 	if (irFrame.isValid())
 	{
-		xnOSSaveFile(csIRFileName, irFrame.getData(), irFrame.getDataSize());
+		//xnOSSaveFile(csIRFileName, irFrame.getData(), irFrame.getDataSize());
+		//std::cout << irFrame.getDataSize();
+
+		cv::Mat irData(irFrame.getHeight(), irFrame.getWidth(), CV_16UC1, (void*)irFrame.getData());
+		irData = irData * 400;
+		cv::imwrite(csIRFileName, irData);
 	}
 
 	g_Capture.nCapturedFrameUniqueID = num + 1;
@@ -512,4 +513,30 @@ const char* captureGetColorFormatName()
 const char* captureGetIRFormatName()
 {
 	return getCaptureTypeName(g_Capture.streams[CAPTURE_IR_STREAM].captureType);
+}
+
+inline const char* captureTrackerPose()
+{
+	static char buf[512];
+	memset(buf, 0, sizeof(buf));
+
+	std::stringstream s;
+	vr::TrackedDevicePose_t pose;
+	if (g_tracker.getPose(pose))
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 4; j++)
+			{
+				s << pose.mDeviceToAbsoluteTracking.m[i][j] << " ";
+			}
+			s << "\n";
+		}
+		s << "\n";
+
+		std::string ss = s.str();
+		memcpy_s(buf, sizeof(buf), ss.c_str(), ss.size());
+	}
+
+	return buf;
 }
