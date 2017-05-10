@@ -18,6 +18,20 @@ DepthKinect2Stream::DepthKinect2Stream(Kinect2StreamImpl* pStreamImpl)
   m_videoMode.resolutionY = 424;
   m_colorSpaceCoords = new ColorSpacePoint[512*424];
   m_registeredDepthMap = new UINT16[512*424];
+
+  m_distortLUT = new int[512 * 424];
+  m_undistortDepth = new UINT16[512 * 424];
+
+  m_depthIntrinsic.fx = 361.3657;
+  m_depthIntrinsic.fy = 360.0796;
+  m_depthIntrinsic.cx = 259.6403;
+  m_depthIntrinsic.cy = 202.9793;
+  m_depthIntrinsic.k1 = 0.1006;
+  m_depthIntrinsic.k2 = -0.2297;
+  m_depthIntrinsic.k3 = 0.0;
+  m_depthIntrinsic.p1 = 0.0;
+  m_depthIntrinsic.p2 = 0.0;
+  setupUndistortion();
 }
 
 DepthKinect2Stream::~DepthKinect2Stream()
@@ -165,6 +179,9 @@ void DepthKinect2Stream::copyDepthPixelsWithImageRegistration(const UINT16* data
   unsigned short* data_out = (unsigned short*) m_registeredDepthMap;
   xnOSMemSet(data_out, 0, width*height*2);
 
+  undistortDepth(data_in, m_undistortDepth);
+  data_in = m_undistortDepth;
+
   const ColorSpacePoint* mappedCoordsIter = m_colorSpaceCoords;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -208,4 +225,64 @@ void DepthKinect2Stream::copyDepthPixelsWithImageRegistration(const UINT16* data
       data_out++;
     }
   }
+}
+
+void DepthKinect2Stream::distort(int mx, int my, float& x, float& y)
+{
+	float dx = ((float)mx - m_depthIntrinsic.cx) / m_depthIntrinsic.fx;
+	float dy = ((float)my - m_depthIntrinsic.cy) / m_depthIntrinsic.fy;
+	float dx2 = dx * dx;
+	float dy2 = dy * dy;
+	float r2 = dx2 + dy2;
+	float dxdy2 = 2 * dx * dy;
+	float kr = 1 + ((m_depthIntrinsic.k3 * r2 + m_depthIntrinsic.k2) * r2 + m_depthIntrinsic.k1) * r2;
+	x = m_depthIntrinsic.fx * (dx * kr + m_depthIntrinsic.p2 * (r2 + 2 * dx2) + m_depthIntrinsic.p1 * dxdy2) + m_depthIntrinsic.cx;
+	y = m_depthIntrinsic.fy * (dy * kr + m_depthIntrinsic.p1 * (r2 + 2 * dy2) + m_depthIntrinsic.p2 * dxdy2) + m_depthIntrinsic.cy;
+}
+
+void DepthKinect2Stream::setupUndistortion()
+{
+	float mx, my;
+	int ix, iy, index;
+	int *map_dist = m_distortLUT;
+	for (int y = 0; y < 424; y++) {
+		for (int x = 0; x < 512; x++) {
+			// compute the dirstored coordinate for current pixel
+			distort(x, y, mx, my);
+			// rounding the values and check if the pixel is inside the image
+			ix = (int)(mx + 0.5f);
+			iy = (int)(my + 0.5f);
+			if (ix < 0 || ix >= 512 || iy < 0 || iy >= 424)
+				index = -1;
+			else
+				// computing the index from the coordianted for faster access to the data
+				index = iy * 512 + ix;
+			*map_dist++ = index;
+		}
+	}
+}
+
+void DepthKinect2Stream::undistortDepth(const UINT16* data_in, UINT16* data_undistorted)
+{
+	// Check if all frames are valid and have the correct size
+	if (!data_in || !data_undistorted)
+		return;
+
+	const int *map_dist = m_distortLUT;
+	const int size_depth = 512 * 424;
+
+	for (int i = 0; i < size_depth; ++i, ++data_undistorted, ++map_dist) {
+		// getting index of distorted depth pixel
+		const int index = *map_dist;
+
+		// check if distorted depth pixel is outside of the depth image
+		if (index < 0) {
+			*data_undistorted = 0;
+			continue;
+		}
+
+		// getting depth value for current pixel
+		const UINT16 z = data_in[index];
+		*data_undistorted = z;
+	}
 }
