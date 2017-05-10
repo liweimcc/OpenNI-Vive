@@ -100,7 +100,9 @@ IntPair mouseLocation;
 IntPair windowSize;
 
 void XtionConfig();
+void KinectConfig();
 void SaveCalibData();
+void SaveCalibDataKinect();
 
 // --------------------------------
 // Utilities
@@ -140,6 +142,15 @@ void keyboardSpecialCallback(int key, int /*x*/, int /*y*/)
         if (key == 2) {
             SaveCalibData();
         }
+
+		if (key == 3) {
+			KinectConfig();
+		}
+
+		if (key == 4)
+		{
+			SaveCalibDataKinect();
+		}
     }
 
     glutPostRedisplay();
@@ -742,4 +753,44 @@ void XtionConfig()
     captureSetDepthFormat(STREAM_CAPTURE_LOSSLESS);
     captureSetColorFormat(STREAM_CAPTURE_LOSSLESS);
     captureSetIRFormat(STREAM_DONT_CAPTURE);
+}
+
+void KinectConfig()
+{
+	setDepthVideoMode(0);
+	setColorVideoMode(0);
+
+	changeRegistration(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+
+	captureSetDepthFormat(STREAM_CAPTURE_LOSSLESS);
+	captureSetColorFormat(STREAM_CAPTURE_LOSSY);
+	captureSetIRFormat(STREAM_DONT_CAPTURE);
+}
+
+void SaveCalibDataKinect()
+{
+	if (isCalibConfigured == false) {
+		setDepthVideoMode(0);
+		setColorVideoMode(0);
+		setIRVideoMode(0);
+
+		captureSetDepthFormat(STREAM_DONT_CAPTURE);
+		captureSetColorFormat(STREAM_CAPTURE_LOSSLESS);
+		captureSetIRFormat(STREAM_CAPTURE_LOSSLESS);
+
+		calibTrackerFile.open("CalibTrackerFile.txt", std::ofstream::out);
+
+		displayMessage("Set Mode to Save Calibration Data");
+
+		isCalibConfigured = true;
+	}
+	else {
+		readFrame();
+
+		extern int g_captureSingleFrameNum;
+		calibTrackerFile << "\n " << g_captureSingleFrameNum + 1 << "\n"
+			<< captureTrackerPose();
+
+		captureSingleFrame(0);
+	}
 }
