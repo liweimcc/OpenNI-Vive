@@ -328,8 +328,11 @@ void captureRun()
 			lastIdx = idx;
 
 			// Get Hololen pose and write into log file
-			g_poseLogString << timestamp << " " << idx - startIdx << "\n";
-			g_poseLogString << captureTrackerPose();
+			const char * strPose = captureTrackerPose();
+			if ( strPose != NULL)
+			{
+				g_poseLogString << timestamp << " " << idx - startIdx << "\n" << strPose;
+			}
 		}
 	}
 }
@@ -536,7 +539,9 @@ inline const char* captureTrackerPose()
 
 		std::string ss = s.str();
 		memcpy_s(buf, sizeof(buf), ss.c_str(), ss.size());
+
+		return buf;
 	}
 
-	return buf;
+	return NULL;
 }

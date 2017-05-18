@@ -72,6 +72,11 @@ bool ViveTracker::getPose(vr::TrackedDevicePose_t &pose)
 
 		pose = m_poseBuf[m_trackerIdx];
 
+		if ( !pose.bPoseIsValid )
+		{
+			return false;
+		}
+
 		return true;
 	}
 	
