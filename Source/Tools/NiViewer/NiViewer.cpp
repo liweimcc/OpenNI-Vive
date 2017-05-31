@@ -101,8 +101,10 @@ IntPair windowSize;
 
 void XtionConfig();
 void KinectConfig();
+void KinectV1Config();
 void SaveCalibData();
 void SaveCalibDataKinect();
+void SaveCalibDataKinectV1();
 
 // --------------------------------
 // Utilities
@@ -150,6 +152,15 @@ void keyboardSpecialCallback(int key, int /*x*/, int /*y*/)
 		if (key == 4)
 		{
 			SaveCalibDataKinect();
+		}
+
+		if (key == 5) {
+			KinectV1Config();
+		}
+
+		if (key == 6)
+		{
+			SaveCalibDataKinectV1();
 		}
     }
 
@@ -718,6 +729,8 @@ void SaveCalibData()
 
         displayMessage("Set Mode to Save Calibration Data");
 
+		resetIRHistogram();
+		
         isCalibConfigured = true;
     } else {
         readFrame();
@@ -727,6 +740,8 @@ void SaveCalibData()
                          << captureTrackerPose();
 
         captureSingleFrame(0);
+		
+		resetIRHistogram();
     }
 }
 
@@ -790,6 +805,61 @@ void SaveCalibDataKinect()
 		extern int g_captureSingleFrameNum;
 		calibTrackerFile << "\n " << g_captureSingleFrameNum + 1 << "\n"
 			<< captureTrackerPose();
+
+		captureSingleFrame(0);
+	}
+}
+
+
+void KinectV1Config()
+{
+	setDepthVideoMode(0);
+	setColorVideoMode(1);
+
+	changeRegistration(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+
+	captureSetDepthFormat(STREAM_CAPTURE_LOSSLESS);
+	captureSetColorFormat(STREAM_CAPTURE_LOSSY);
+	captureSetIRFormat(STREAM_DONT_CAPTURE);
+}
+
+void SaveCalibDataKinectV1()
+{
+	if (isCalibConfigured == false) {
+
+		//toggleDepthState(0);
+
+		setDepthVideoMode(0);
+		setColorVideoMode(1);
+
+		//toggleIRState(0);
+		setIRVideoMode(0);
+
+		extern openni::VideoStream g_irStream;
+		if (g_irStream.getCameraSettings() != NULL) {
+			g_irStream.getCameraSettings()->setAutoExposureEnabled(false);
+		}
+
+		if (g_irStream.getCameraSettings() != NULL) {
+			g_irStream.getCameraSettings()->setAutoWhiteBalanceEnabled(false);
+		}
+
+		captureSetDepthFormat(STREAM_DONT_CAPTURE);
+		captureSetColorFormat(STREAM_CAPTURE_LOSSLESS);
+		captureSetIRFormat(STREAM_CAPTURE_LOSSLESS);
+
+		calibTrackerFile.open("CalibTrackerFile.txt", std::ofstream::out);
+
+		displayMessage("Set Mode to Save Calibration Data");
+
+		isCalibConfigured = true;
+	}
+	else {
+		readFrame();
+
+ 		extern int g_captureSingleFrameNum;
+ 		calibTrackerFile << "\n " << g_captureSingleFrameNum + 1 << "\n"
+ 			<< captureTrackerPose();
 
 		captureSingleFrame(0);
 	}
