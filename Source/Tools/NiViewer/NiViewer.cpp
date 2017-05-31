@@ -729,7 +729,7 @@ void SaveCalibData()
 
         displayMessage("Set Mode to Save Calibration Data");
 
-		resetIRHistogram();
+		resetIRHistogram(0);
 		
         isCalibConfigured = true;
     } else {
@@ -741,7 +741,7 @@ void SaveCalibData()
 
         captureSingleFrame(0);
 		
-		resetIRHistogram();
+		resetIRHistogram(0);
     }
 }
 
