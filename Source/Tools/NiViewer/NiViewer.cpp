@@ -52,6 +52,7 @@
 #include "OpenNI.h"
 #include "XnLib.h"
 #include <fstream>
+#include <iostream>
 
 #ifdef MACOS
 #include <GLUT/glut.h>
@@ -105,6 +106,7 @@ void KinectV1Config();
 void SaveCalibData();
 void SaveCalibDataKinect();
 void SaveCalibDataKinectV1();
+void SavePhoneCapture();
 
 // --------------------------------
 // Utilities
@@ -132,9 +134,13 @@ void keyboardCallback(unsigned char key, int /*x*/, int /*y*/)
 
 void keyboardSpecialCallback(int key, int /*x*/, int /*y*/)
 {
+#if 0
     if (isCapturing()) {
         captureStop(0);
     } else {
+#else
+	if (true) {
+#endif
         handleSpecialKey(key);
 
         if (key == 1) {
@@ -161,6 +167,11 @@ void keyboardSpecialCallback(int key, int /*x*/, int /*y*/)
 		if (key == 6)
 		{
 			SaveCalibDataKinectV1();
+		}
+
+		if (key == 10)
+		{
+			SavePhoneCapture();
 		}
     }
 
@@ -863,4 +874,10 @@ void SaveCalibDataKinectV1()
 
 		captureSingleFrame(0);
 	}
+}
+
+extern void takePhonePicture();
+void SavePhoneCapture()
+{
+	takePhonePicture();
 }

@@ -28,12 +28,16 @@
 #include "Device.h"
 #include "Draw.h"
 
+#include "FusionViewerController.h"
 #include "ViveTracker.h"
 #include "opencv2/opencv.hpp"
 
 #if (XN_PLATFORM == XN_PLATFORM_WIN32)
 #include <Commdlg.h>
 #endif
+
+void initPhoneCtrler();
+void capturePhoneImage(std::string name);
 
 // --------------------------------
 // Defines
@@ -102,11 +106,25 @@ DeviceParameter g_IRCapturing;
 std::ofstream g_poseLogFile;
 std::stringstream g_poseLogString;
 
+FusionViewerController* phoneCtrler = NULL;
+static bool isNeedPhoneCapture = false;
+
+void takePhonePicture()
+{
+	if (isNeedPhoneCapture == false)
+	{
+		isNeedPhoneCapture = true;
+	}
+}
+
 // --------------------------------
 // Code
 // --------------------------------
 void captureInit()
 {
+	// init phone connect
+	initPhoneCtrler();
+
 	// init tracker first
 	g_tracker.InitOpenVR();
 
@@ -325,6 +343,13 @@ void captureRun()
 
 		if (lastIdx != idx)
 		{
+			if (isNeedPhoneCapture == true)
+			{
+				std::string HDFileName = "HD" + std::to_string(idx - startIdx) + ".jpg";
+				capturePhoneImage(HDFileName);
+				isNeedPhoneCapture = false;
+			}
+
 			lastIdx = idx;
 
 			// Get Hololen pose and write into log file
@@ -456,6 +481,9 @@ void captureSingleFrame(int)
 	getDepthFileName(num, csDepthFileName);
 	getIRFileName(num, csIRFileName);
 
+	std::string HDFileName = "HD" + std::to_string(num) + ".jpg";
+	capturePhoneImage(HDFileName);
+
 	openni::VideoFrameRef& colorFrame = getColorFrame();
 	if (colorFrame.isValid())
 	{
@@ -544,4 +572,33 @@ inline const char* captureTrackerPose()
 	}
 
 	return NULL;
+}
+
+void initPhoneCtrler()
+{
+	std::string ip;
+	int port;
+
+	std::ifstream f("PhoneCfg.txt");
+	if (f.is_open())
+	{
+		getline(f, ip);
+		f >> port;
+
+		std::cout << "[initPhoneCtrler] ip : " << ip << "  port :" << port;
+
+		phoneCtrler = new FusionViewerController(ip, port);
+	}
+	else
+	{
+		std::cout << "[initPhoneCtrler] cannot open  PhoneCfg.txt ";
+	}
+}
+
+void capturePhoneImage(std::string name)
+{
+	if ( phoneCtrler != NULL)
+	{
+		phoneCtrler->sendCpatureImageCmd(name);
+	}
 }

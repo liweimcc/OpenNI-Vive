@@ -10,8 +10,8 @@ public:
 	FusionViewerController(std::string ip, int port);
 	~FusionViewerController();
 
+	int sendCpatureImageCmd(std::string name);
 	int sendCommand(std::string cmd);
-	//void sendCommand(std::string cmd, std::string value);
 
 private:
 	int init();

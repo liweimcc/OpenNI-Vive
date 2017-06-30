@@ -40,6 +40,12 @@ int FusionViewerController::sendCommand(std::string cmd)
 {
 	return send(sockfd, cmd.c_str(), cmd.length(), 0);
 }
+
+int FusionViewerController::sendCpatureImageCmd(std::string name)
+{
+	std::string cmd = "capture," + name + "\r\n";
+	return sendCommand(cmd);
+}
 	
 int FusionViewerController::init()
 {
@@ -70,8 +76,14 @@ int FusionViewerController::tryConnect(std::string ip, int port)
 	addr.sin_port = htons(port);
 
 #if _WIN32
-	std::wstring wip(ip.begin(), ip.end());
-	if (InetPton(AF_INET, (PCWSTR)wip.c_str(), &addr.sin_addr) <= 0)
+#ifdef _UNICODE
+	std::wstring uip(ip.begin(), ip.end());
+
+#else // _UNICODE
+	std::string uip(ip.begin(), ip.end());
+#endif
+
+	if (InetPton(AF_INET, (PCSTR)uip.c_str(), &addr.sin_addr) <= 0)
 #else
 	if (inet_pton(AF_INET, ip.c_str(), &serv_addr.sin_addr) <= 0)
 #endif
