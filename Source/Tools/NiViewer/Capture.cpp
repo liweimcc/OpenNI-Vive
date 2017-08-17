@@ -123,7 +123,7 @@ void takePhonePicture()
 void captureInit()
 {
 	// init phone connect
-	initPhoneCtrler();
+	//initPhoneCtrler();
 
 	// init tracker first
 	g_tracker.InitOpenVR();
@@ -551,6 +551,7 @@ inline const char* captureTrackerPose()
 	static char buf[512];
 	memset(buf, 0, sizeof(buf));
 
+#ifndef WITHOUT_OPENVR
 	std::stringstream s;
 	vr::TrackedDevicePose_t pose;
 	if (g_tracker.getPose(pose))
@@ -570,8 +571,9 @@ inline const char* captureTrackerPose()
 
 		return buf;
 	}
+#endif WITHOUT_OPENVR
 
-	return NULL;
+	return buf;
 }
 
 void initPhoneCtrler()

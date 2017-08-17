@@ -2,18 +2,20 @@
 #ifndef VIVETRACKER_H
 #define VIVETRACKER_H
 
-#include "openvr.h"
+#ifndef WITHOUT_OPENVR
 
-enum ELogLevel
-{
-	LogError,
-	LogWarning,
-	LogInfo,
-};
+#include "openvr.h"
 
 class ViveTracker
 {
 public:
+
+	enum ELogLevel
+	{
+		LogError,
+		LogWarning,
+		LogInfo,
+	};
 	ViveTracker();
 	~ViveTracker();
 
@@ -29,5 +31,17 @@ private:
 
 	vr::TrackedDevicePose_t* m_poseBuf;
 };
+#else
+
+class ViveTracker
+{
+public:
+	ViveTracker() {}
+	~ViveTracker() {}
+
+	bool InitOpenVR() { return true; }
+};
+
+#endif
 
 #endif // VIVETRACKER_H

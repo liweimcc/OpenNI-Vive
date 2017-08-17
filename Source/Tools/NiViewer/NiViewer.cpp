@@ -738,6 +738,8 @@ void SaveCalibData()
 
         calibTrackerFile.open("CalibTrackerFile.txt", std::ofstream::out);
 
+		assert(calibTrackerFile.is_open());
+
         displayMessage("Set Mode to Save Calibration Data");
 
 		resetIRHistogram(0);
